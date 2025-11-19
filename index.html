@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kimi K2 - Chat IA</title>
+  <title>Kimi K2 - Chat IA Pro</title>
   <style>
     :root {
       --bg: #0d1117;
@@ -46,15 +46,8 @@
       border-radius: 1rem;
       animation: fadeIn 0.3s ease;
     }
-    .user {
-      align-self: flex-end;
-      background: var(--primary);
-      color: #000;
-    }
-    .bot {
-      align-self: flex-start;
-      background: var(--surface);
-    }
+    .user { align-self: flex-end; background: var(--primary); color: #000; }
+    .bot { align-self: flex-start; background: var(--surface); }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: none; }
@@ -65,7 +58,7 @@
       background: var(--surface);
       gap: 0.5rem;
     }
-    #input-area input {
+    #user-input {
       flex: 1;
       padding: 0.75rem 1rem;
       border: none;
@@ -103,17 +96,21 @@
 </head>
 <body>
   <header>
-    <h1>🌙 Kimi K2</h1>
+    <h1>🌙 Kimi K2 Pro</h1>
     <div class="controls">
       <button onclick="toggleVoice()">🎤 Voz</button>
+      <button onclick="toggleTTS()">🔊 Leer</button>
       <button onclick="exportChat()">💾 Exportar</button>
+      <button onclick="importChat()">📂 Importar</button>
       <button onclick="clearHistory()">🗑️ Borrar</button>
       <button onclick="toggleFullscreen()">⛶ Pantalla</button>
+      <button onclick="searchChat()">🔍 Buscar</button>
+      <input type="file" id="file-input" onchange="handleFile(event)" />
     </div>
   </header>
   <main id="chat-box"></main>
   <footer id="input-area">
-    <input id="user-input" type="text" placeholder="Escribe o habla..." autocomplete="off" />
+    <input id="user-input" type="text" placeholder="Escribe o habla..." autocomplete="off" aria-label="Entrada de texto"/>
     <button onclick="sendMessage()" title="Enviar">➤</button>
   </footer>
 
@@ -122,6 +119,7 @@
     const chatBox = document.getElementById('chat-box');
     const input = document.getElementById('user-input');
     let useVoice = false;
+    let useTTS = false;
     let thinking = false;
 
     function loadHistory() {
@@ -142,6 +140,7 @@
       chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
       if (save) saveMessage(role, text);
+      if (role === 'bot' && useTTS) speak(text);
     }
 
     async function sendMessage() {
@@ -180,6 +179,23 @@
       a.click();
     }
 
+    function importChat() {
+      const inputFile = document.createElement('input');
+      inputFile.type = 'file';
+      inputFile.accept = 'application/json';
+      inputFile.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = () => {
+          localStorage.setItem('kimi-history', reader.result);
+          chatBox.innerHTML = '';
+          loadHistory();
+        };
+        reader.readAsText(file);
+      };
+      inputFile.click();
+    }
+
     function toggleFullscreen() {
       document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
     }
@@ -204,14 +220,26 @@
       recognition.onerror = () => alert('Error al escuchar.');
     }
 
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
+    function toggleTTS() { useTTS = !useTTS; }
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'es-ES';
+      speechSynthesis.speak(utterance);
+    }
 
-    window.onload = loadHistory;
-  </script>
-</body>
-</html>
+    function searchChat() {
+      const term = prompt('Buscar en historial:');
+      if (!term) return;
+      const history = JSON.parse(localStorage.getItem('kimi-history') || '[]');
+      const results = history.filter(m => m.text.toLowerCase().includes(term.toLowerCase()));
+      alert(`Encontrados ${results.length} resultados`);
+    }
+
+    function handleFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        appendMessage('user', `Archivo subido: ${file.name}`);
+        try {
+          const response = await puter.ai.chat(`Analiza este archivo:\n${reader.result}`, { model: 'moonshotai/kimi-k
