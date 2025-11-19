@@ -48,3 +48,26 @@ div.textContent = text;
 chatBox.appendChild(div);
 chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+async function sendMessage() {
+const text = input.value.trim();
+if (!text) return;
+appendMessage('user', text);
+saveMessage('user', text);
+input.value = '';
+
+try {
+const response = await puter.ai.chat(text, { model: 'moonshotai/kimi-k2' });
+appendMessage('bot', response);
+saveMessage('bot', response);
+} catch (err) {
+const errorMsg = 'Error al obtener respuesta de Kimi.';
+appendMessage('bot', errorMsg);
+saveMessage('bot', errorMsg);
+}
+}
+
+window.onload = loadHistory;
+</script>
+</body>
+</html>
