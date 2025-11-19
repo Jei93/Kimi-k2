@@ -1,132 +1,167 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kimi K2 - Chat IA (Fix envío)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kimi K2 - Envío fijo</title>
   <style>
-    :root { --bg:#0d1117; --surface:#161b22; --primary:#58a6ff; --text:#e6edf3; --muted:#8b949e; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); display:flex; flex-direction:column; height:100vh; }
-    header { padding:1rem; background:var(--surface); display:flex; align-items:center; justify-content:space-between; }
-    #chat-box { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:0.75rem; }
-    .msg { max-width:70%; padding:0.75rem 1rem; border-radius:1rem; white-space:pre-wrap; }
-    .user { align-self:flex-end; background:var(--primary); color:#000; }
-    .bot { align-self:flex-start; background:var(--surface); }
-    #input-area { display:flex; padding:1rem; background:var(--surface); gap:0.5rem; position:sticky; bottom:0; }
-    #user-input { flex:1; padding:0.75rem 1rem; border:none; border-radius:2rem; background:var(--bg); color:var(--text); outline:none; }
-    #send-btn { border:none; border-radius:50%; width:3rem; height:3rem; background:var(--primary); color:#000; cursor:pointer; }
-    #send-btn[disabled] { opacity:0.6; cursor:not-allowed; }
+    :root{--bg:#0d1117;--surface:#161b22;--primary:#58a6ff;--text:#e6edf3;--muted:#8b949e}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh}
+    header{padding:0.75rem 1rem;background:var(--surface);display:flex;align-items:center;justify-content:space-between}
+    #chat-box{flex:1;overflow:auto;padding:1rem;display:flex;flex-direction:column;gap:0.5rem}
+    .msg{max-width:80%;padding:0.6rem 0.9rem;border-radius:12px;white-space:pre-wrap}
+    .user{align-self:flex-end;background:var(--primary);color:#000}
+    .bot{align-self:flex-start;background:var(--surface);border:1px solid rgba(255,255,255,0.03)}
+    #input-area{display:flex;gap:0.5rem;padding:0.75rem 1rem;background:var(--surface);align-items:center}
+    #user-input{flex:1;padding:0.6rem 0.9rem;border-radius:999px;border:none;background:transparent;color:var(--text);outline:none}
+    #send-btn{width:44px;height:44px;border-radius:50%;border:none;background:var(--primary);color:#000;cursor:pointer}
+    #send-btn[disabled]{opacity:0.5;cursor:not-allowed}
+    .hidden{display:none}
   </style>
 </head>
 <body>
-  <header>
-    <h1>🌙 Kimi K2 Chat</h1>
-  </header>
+  <header><h1 style="margin:0;font-size:1rem">🌙 Kimi K2 — Fix Envío</h1></header>
+  <main id="chat-box" aria-live="polite"></main>
 
-  <main id="chat-box" aria-live="polite" aria-label="Mensajes del chat"></main>
-
-  <footer id="input-area">
-    <input id="user-input" type="text" placeholder="Escribe tu mensaje..." autocomplete="off" aria-label="Entrada de texto"/>
-    <button id="send-btn" type="button" title="Enviar" aria-label="Enviar">➤</button>
+  <footer id="input-area" role="region" aria-label="Caja de entrada">
+    <input id="user-input" type="text" placeholder="Escribe tu mensaje..." aria-label="Mensaje"/>
+    <button id="send-btn" type="button" aria-label="Enviar">➤</button>
   </footer>
 
-  <!-- Librería puter -->
   <script src="https://js.puter.com/v2/"></script>
-
-  <!-- Tu lógica. Importante: SIN atributos inline y cargado al final -->
   <script>
-    // Referencias
-    const chatBox = document.getElementById('chat-box');
-    const input = document.getElementById('user-input');
-    const sendBtn = document.getElementById('send-btn');
+    (function(){
+      // Elementos
+      const chatBox = document.getElementById('chat-box');
+      const input = document.getElementById('user-input');
+      const sendBtn = document.getElementById('send-btn');
 
-    let thinking = false;
+      // Estado
+      let thinking = false;
 
-    // Asegura que el botón y Enter funcionen
-    function bindEvents() {
-      sendBtn.addEventListener('click', () => {
-        sendMessage();
-      });
+      // Helpers UI
+      function appendMessage(role, text){
+        const d = document.createElement('div');
+        d.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+        d.textContent = text ?? '';
+        chatBox.appendChild(d);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
 
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
+      function setBusy(flag){
+        thinking = !!flag;
+        sendBtn.disabled = thinking;
+        if(thinking) sendBtn.setAttribute('aria-busy','true'); else sendBtn.removeAttribute('aria-busy');
+      }
+
+      // Normalizar respuestas del SDK
+      function normalizeResponse(res){
+        try{
+          if(res == null) return '';
+          if(typeof res === 'string') return res;
+          if(typeof res === 'object'){
+            if(res.output) return res.output;
+            if(res.message) return res.message;
+            if(res.text) return res.text;
+            if(Array.isArray(res.choices) && res.choices[0]?.message?.content) return res.choices[0].message.content;
+            if(res.content) return res.content;
+            // algunos SDK envían chunks (array)
+            if(Array.isArray(res)) return res.map(r=>normalizeResponse(r)).join('');
+            return JSON.stringify(res);
+          }
+          return String(res);
+        }catch(e){ return String(res); }
+      }
+
+      // Esperar puter disponible (timeout configurable)
+      async function ensurePuterReady(timeout = 5000){
+        const start = Date.now();
+        while(!(window.puter && window.puter.ai && typeof window.puter.ai.chat === 'function')){
+          if(Date.now() - start > timeout) throw new Error('Puter no disponible tras ' + timeout + 'ms');
+          await new Promise(r => setTimeout(r, 100));
         }
-      });
-    }
+      }
 
-    function appendMessage(role, text) {
-      const div = document.createElement('div');
-      div.className = 'msg ' + role;
-      div.textContent = text;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
+      // Envío robusto
+      async function sendMessage(){
+        const text = (input.value || '').trim();
+        if(!text) return;
+        if(thinking) { console.log('Ignorado: ya hay petición en curso'); return; }
 
-    function normalizeResponse(res) {
-      if (res == null) return '';
-      if (typeof res === 'string') return res;
-      if (typeof res === 'object') {
-        if (res.output) return res.output;
-        if (res.message) return res.message;
-        if (res.text) return res.text;
-        if (Array.isArray(res.choices) && res.choices[0]?.message?.content) {
-          return res.choices[0].message.content;
+        // UI local
+        appendMessage('user', text);
+        input.value = '';
+        setBusy(true);
+
+        // Placeholder "pensando"
+        const placeholder = document.createElement('div');
+        placeholder.className = 'msg bot';
+        placeholder.textContent = 'Pensando…';
+        chatBox.appendChild(placeholder);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        try{
+          await ensurePuterReady(7000); // ajusta si tu red es lenta
+          // Llamada principal
+          // Si tu puter.ai.chat acepta opciones adicionales (history, stream), adáptalo aquí.
+          const res = await puter.ai.chat(text, { model: 'moonshotai/kimi-k2' });
+          const out = normalizeResponse(res);
+          placeholder.remove();
+          appendMessage('bot', out || 'Respuesta vacía.');
+          console.log('Respuesta recibida:', out);
+        }catch(err){
+          console.error('Error en envío:', err);
+          placeholder.remove();
+          appendMessage('bot', '❌ Error al enviar. Revisa la consola.');
+        }finally{
+          setBusy(false);
+          input.focus();
         }
-        if (res.content) return res.content;
-        return JSON.stringify(res);
       }
-      return String(res);
-    }
 
-    async function ensurePuterReady() {
-      const start = Date.now();
-      while (!(window.puter && window.puter.ai && typeof window.puter.ai.chat === 'function')) {
-        if (Date.now() - start > 5000) throw new Error('Puter no disponible');
-        await new Promise(r => setTimeout(r, 100));
+      // Bind de eventos UNA vez DOM listo
+      function bind(){
+        // Click botón
+        sendBtn.addEventListener('click', sendMessage);
+
+        // Enter en input
+        input.addEventListener('keydown', (e) => {
+          if(e.key === 'Enter' && !e.shiftKey){
+            e.preventDefault();
+            sendMessage();
+          }
+        });
+
+        // Mejora UX: focus
+        window.addEventListener('load', () => input.focus());
+
+        // Accesible: Enter también envía si el botón tiene foco
+        sendBtn.addEventListener('keydown', (e) => {
+          if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sendMessage(); }
+        });
       }
-    }
 
-    async function sendMessage() {
-      const text = input.value.trim();
-      if (!text || thinking) return;
-
-      // Estado UI
-      thinking = true;
-      sendBtn.disabled = true;
-
-      appendMessage('user', text);
-      input.value = '';
-
-      const placeholder = document.createElement('div');
-      placeholder.className = 'msg bot';
-      placeholder.textContent = 'Pensando…';
-      chatBox.appendChild(placeholder);
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      try {
-        await ensurePuterReady();
-        const res = await puter.ai.chat(text, { model: 'moonshotai/kimi-k2' });
-        const out = normalizeResponse(res);
-        placeholder.remove();
-        appendMessage('bot', out || 'Respuesta vacía.');
-      } catch (err) {
-        console.error(err);
-        placeholder.remove();
-        appendMessage('bot', 'Error al conectar con Kimi.');
-      } finally {
-        thinking = false;
-        sendBtn.disabled = false;
-        input.focus();
+      // Inicializa historial mínimo (opcional)
+      function loadStubHistory(){
+        // Si quieres cargar historial de localStorage, hazlo aquí (omitido para minimal)
       }
-    }
 
-    // Inicialización segura
-    window.addEventListener('DOMContentLoaded', () => {
-      bindEvents();
-    });
+      // Arranque
+      (function init(){
+        try{
+          bind();
+          loadStubHistory();
+          console.log('Interfaz lista. Esperando puter si es necesario...');
+          // No bloquear init por puter; ensurePuterReady se llama al enviar
+        }catch(e){
+          console.error('Init error:', e);
+        }
+      })();
+
+      // Exponer para depuración desde consola si hace falta
+      window.__kimi_debug = { sendMessage, appendMessage, ensurePuterReady };
+    })();
   </script>
 </body>
 </html>
