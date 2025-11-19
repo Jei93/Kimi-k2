@@ -1,28 +1,50 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Chat con Kimi K2</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8"/>
+  <title>Kimi K2 – Pro</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <!-- markdown, highlight & estilos -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
-    #chat-box { height: 70vh; overflow-y: auto; padding: 10px; background: #fff; border: 1px solid #ccc; margin: 10px; }
-    .msg { margin: 5px 0; }
-    .user { text-align: right; color: #0057e7; }
-    .bot { text-align: left; color: #333; }
-    #input-area { display: flex; padding: 10px; }
-    #input-area input { flex: 1; padding: 10px; font-size: 1em; }
-    #input-area button { padding: 10px 20px; font-size: 1em; margin-left: 5px; }
+    body{font-family:Arial,sans-serif;margin:0;padding:0;background:#f4f4f4}
+    #chat-box{height:70vh;overflow-y:auto;padding:10px;background:#fff;border:1px solid #ccc;margin:10px}
+    .msg{margin:8px 0;display:flex}
+    .msg.user{justify-content:flex-end}
+    .msg.bot{justify-content:flex-start}
+    .msg>div{max-width:70%;padding:8px 12px;border-radius:12px}
+    .user>div{background:#e3f2fd}
+    .bot>div{background:#fff;border:1px solid #ddd}
+    #input-area{display:flex;padding:0 10px 10px}
+    #input-area input{flex:1;padding:10px;font-size:1em}
+    #input-area button{padding:10px 14px;margin-left:5px;font-size:1em}
+    #tools{display:flex;gap:10px;padding:0 10px 10px;flex-wrap:wrap}
+    select, input[type=file]{padding:6px;font-size:.9em}
+    pre{background:#f6f8fa;border-radius:6px;padding:8px;overflow:auto}
   </style>
 </head>
 <body>
-
-  <h2 style="text-align:center;">Chat con Kimi K2 (Gratis)</h2>
+  <h2 style="text-align:center">Chat con Kimi K2 – Pro</h2>
   <div id="chat-box"></div>
 
+  <div id="tools">
+    <select id="mode">
+      <option value="">Normal</option>
+      <option value="reasoning">Razonamiento profundo</option>
+      <option value="web-search">Buscar en la web</option>
+    </select>
+    <label>
+      <input type="file" id="fileInput" accept="image/*,application/pdf,.doc,.docx,text/plain">
+      📎&nbsp;Adjuntar
+    </label>
+    <button onclick="shareChat()">Compartir chat</button>
+  </div>
+
   <div id="input-area">
-    <input type="text" id="user-input" placeholder="Escribe tu mensaje..." 
-           onkeypress="if(event.key==='Enter') sendMessage()"/>
+    <input id="user-input" type="text" placeholder="Escribe o arrastra un archivo"
+           onkeypress="if(event.key==='Enter')sendMessage()">
     <button onclick="sendMessage()">Enviar</button>
   </div>
 
@@ -30,45 +52,87 @@
   <script>
     const chatBox = document.getElementById('chat-box');
     const input = document.getElementById('user-input');
+    const modeSel = document.getElementById('mode');
+    const fileInp = document.getElementById('fileInput');
+    let files=[];
 
-    function loadHistory() {
-      const history = JSON.parse(localStorage.getItem('kimi-history') || '[]');
-      history.forEach(msg => appendMessage(msg.role, msg.text));
+    fileInp.addEventListener('change',()=>{files=[...fileInp.files];});
+    window.addEventListener('dragover',e=>e.preventDefault());
+    window.addEventListener('drop',e=>{
+      e.preventDefault();
+      files=[...e.dataTransfer.files];
+    });
+
+    /* Historial */
+    function loadHistory(){
+      const hist=JSON.parse(localStorage.getItem('kimi-p2')||'[]');
+      hist.forEach(m=>appendRich(m.role,m.content));
     }
-
-    function saveMessage(role, text) {
-      const history = JSON.parse(localStorage.getItem('kimi-history') || '[]');
-      history.push({ role, text });
-      localStorage.setItem('kimi-history', JSON.stringify(history));
+    function save(role,content){
+      const h=JSON.parse(localStorage.getItem('kimi-p2')||'[]');
+      h.push({role,content});
+      localStorage.setItem('kimi-p2',JSON.stringify(h));
     }
-
-    function appendMessage(role, text) {
-      const div = document.createElement('div');
-      div.className = 'msg ' + role;
-      div.textContent = text;
+    function appendRich(role,content){
+      const div=document.createElement('div');
+      div.className='msg '+role;
+      const inner=document.createElement('div');
+      inner.innerHTML=marked.parse(content);
+      div.appendChild(inner);
       chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
+      chatBox.scrollTop=chatBox.scrollHeight;
+      Prism.highlightAllUnder(inner);
     }
 
-    async function sendMessage() {
-      const text = input.value.trim();
-      if (!text) return;
-      appendMessage('user', text);
-      saveMessage('user', text);
-      input.value = '';
+    async function sendMessage(){
+      let text=input.value.trim();
+      if(!text && files.length===0)return;
+      let userCont=text||'Adjunto archivo…';
+      let fileUrls=[];
+      for(const f of files){
+        const url=await puter.hosting.upload(f);
+        fileUrls.push(`[Archivo adjunto: ${url}](${url})`);
+      }
+      if(fileUrls.length)userCont+='\n\n'+fileUrls.join('\n');
+      appendRich('user',userCont);
+      save('user',userCont);
+      input.value='';
+      files=[];
+      fileInp.value='';
 
-      try {
-        const response = await puter.ai.chat(text, { model: 'moonshotai/kimi-k2' });
-        appendMessage('bot', response);
-        saveMessage('bot', response);
-      } catch (err) {
-        const errorMsg = 'Error al obtener respuesta de Kimi.';
-        appendMessage('bot', errorMsg);
-        saveMessage('bot', errorMsg);
+      const mode=modeSel.value;
+      let extra={};
+      if(mode==='reasoning')extra.reasoning='enabled';
+      if(mode==='web-search')extra.web_search='enabled';
+
+      try{
+        const res=await puter.ai.chat(userCont,{...extra,files});
+        const output = typeof res === 'string'
+          ? res
+          : res?.output || res?.message || res?.text || JSON.stringify(res);
+        appendRich('bot',output);
+        save('bot',output);
+      }catch(e){
+        appendRich('bot','❌ Error al contactar con Kimi');
+        save('bot','❌ Error');
       }
     }
 
-    window.onload = loadHistory;
+    function shareChat(){
+      const h=JSON.parse(localStorage.getItem('kimi-p2')||'[]');
+      const txt=h.map(m=>`**${m.role}:** ${m.content}`).join('\n\n');
+      navigator.clipboard.writeText(txt)
+        .then(()=>alert('Chat copiado al portapapeles'))
+        .catch(()=>{
+          const blob=new Blob([txt],{type:'text/plain'});
+          const a=document.createElement('a');
+          a.href=URL.createObjectURL(blob);
+          a.download='chat_kimi.txt';
+          a.click();
+        });
+    }
+
+    window.onload=loadHistory;
   </script>
 </body>
 </html>
