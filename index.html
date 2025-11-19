@@ -1,248 +1,50 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kimi K2 - Chat IA Profesional</title>
-  <style>
-    :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --primary: #58a6ff;
-      --primary-hover: #79bbff;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --error: #f85149;
-      --success: #3fb950;
-      --border: #30363d;
-    }
-    @media (prefers-color-scheme: light) {
-      :root {
-        --bg: #ffffff;
-        --surface: #f6f8fa;
-        --primary: #0969da;
-        --primary-hover: #0860ca;
-        --text: #24292f;
-        --muted: #656d76;
-        --error: #d1242f;
-        --success: #1a7f37;
-        --border: #d0d7de;
-      }
-    }
-    *, *::before, *::after { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font: 16px/1.5 "Segoe UI", system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: .75rem 1rem;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
-      gap: .5rem;
-    }
-    header h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
-    header .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .5rem;
-    }
-    header button {
-      display: inline-flex;
-      align-items: center;
-      gap: .35rem;
-      padding: .4rem .8rem;
-      border-radius: .75rem;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text);
-      cursor: pointer;
-      transition: background .25s ease, color .25s ease;
-    }
-    header button:hover {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-    main#chat-box {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: .75rem;
-    }
-    .msg {
-      max-width: 70%;
-      padding: .75rem 1rem;
-      border-radius: .75rem;
-      animation: fadeIn .3s ease;
-    }
-    .user { align-self: flex-end; background: var(--primary); color: #000; }
-    .bot { align-self: flex-start; background: var(--surface); }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(.5rem); }
-      to { opacity: 1; transform: none; }
-    }
-    .thinking { font-style: italic; color: var(--muted); }
-    footer#input-area {
-      padding: .75rem 1rem;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      display: flex;
-      gap: .5rem;
-      align-items: flex-end;
-    }
-    footer textarea {
-      flex: 1;
-      resize: none;
-      max-height: 8rem;
-      padding: .75rem 1rem;
-      border-radius: .75rem;
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      font: inherit;
-    }
-    footer button {
-      width: 2.75rem;
-      height: 2.75rem;
-      border-radius: 50%;
-      border: none;
-      background: var(--primary);
-      color: #000;
-      cursor: pointer;
-      transition: background .25s ease;
-    }
-    footer button:hover { background: var(--primary-hover); }
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0,0,0,0);
-      border: 0;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Chat con Kimi K2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+#chat-box { height: 70vh; overflow-y: auto; padding: 10px; background: #fff; border: 1px solid #ccc; margin: 10px; }
+.msg { margin: 5px 0; }
+.user { text-align: right; color: #0057e7; }
+.bot { text-align: left; color: #333; }
+#input-area { display: flex; padding: 10px; }
+#input-area input { flex: 1; padding: 10px; font-size: 1em; }
+#input-area button { padding: 10px 20px; font-size: 1em; margin-left: 5px; }
+</style>
 </head>
 <body>
-  <header>
-    <h1>🌙 Kimi K2</h1>
-    <nav class="controls">
-      <label class="sr-only" for="search-box">Buscar en el historial</label>
-      <input id="search-box" type="search" placeholder="🔍 Buscar…" oninput="searchChat(this.value)"/>
-      <input type="file" id="file-input" accept=".pdf,.txt,.jpg,.jpeg,.png" class="hidden"/>
-      <button onclick="document.getElementById('file-input').click()">📎 Archivo</button>
-      <button onclick="toggleVoice()" id="btn-voice">🎤</button>
-      <button onclick="exportChat()">💾</button>
-      <button onclick="importChat()">📥</button>
-      <button onclick="clearHistory()">🗑️</button>
-      <button onclick="toggleFullscreen()">⛶</button>
-    </nav>
-  </header>
 
-  <main id="chat-box" role="log" aria-live="polite"></main>
+<h2 style="text-align:center;">Chat con Kimi K2 (Gratis)</h2>
+<div id="chat-box"></div>
 
-  <footer id="input-area">
-    <textarea id="user-input" rows="1" placeholder="Escribe o dicta tu mensaje…" aria-label="Mensaje"></textarea>
-    <button id="btn-send" aria-label="Enviar">➤</button>
-  </footer>
+<div id="input-area">
+<input type="text" id="user-input" placeholder="Escribe tu mensaje..." onkeypress="if(event.key==='Enter') sendMessage()"/>
+<button onclick="sendMessage()">Enviar</button>
+</div>
 
-  <script src="https://js.puter.com/v2/"></script>
-  <script>
-    const MODEL_NAME = 'moonshotai/kimi-k2';
-    const STORAGE_KEY = 'kimi-chat-v1';
-    const dom = {
-      box: document.getElementById('chat-box'),
-      input: document.getElementById('user-input'),
-      send: document.getElementById('btn-send'),
-      voice: document.getElementById('btn-voice'),
-      file: document.getElementById('file-input'),
-      search: document.getElementById('search-box')
-    };
-    let messages = [];
-    let thinking = false;
-    let recog = null;
+<script src="https://js.puter.com/v2/"></script>
+<script>
+const chatBox = document.getElementById('chat-box');
+const input = document.getElementById('user-input');
 
-    window.addEventListener('DOMContentLoaded', init);
-    function init() {
-      loadHistory();
-      dom.input.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-        }
-      });
-      dom.send.addEventListener('click', sendMessage);
-      dom.file.addEventListener('change', handleFile);
-    }
+function loadHistory() {
+const history = JSON.parse(localStorage.getItem('kimi-history') || '[]');
+history.forEach(msg => appendMessage(msg.role, msg.text));
+}
 
-    function loadHistory() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        messages = JSON.parse(raw);
-        messages.forEach(m => appendMessageDOM(m.role, m.content));
-      }
-    }
+function saveMessage(role, text) {
+const history = JSON.parse(localStorage.getItem('kimi-history') || '[]');
+history.push({ role, text });
+localStorage.setItem('kimi-history', JSON.stringify(history));
+}
 
-    function saveHistory() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-    }
-
-    function appendMessage(role, content) {
-      messages.push({ role, content });
-      appendMessageDOM(role, content);
-      saveHistory();
-    }
-
-    function appendMessageDOM(role, content) {
-      const div = document.createElement('div');
-      div.className = 'msg ' + role;
-      div.textContent = content;
-      dom.box.appendChild(div);
-      dom.box.scrollTop = dom.box.scrollHeight;
-    }
-
-    async function sendMessage() {
-      if (thinking) return;
-      const text = dom.input.value.trim();
-      if (!text) return;
-      appendMessage('user', text);
-      dom.input.value = '';
-      thinking = true;
-
-      const placeholder = document.createElement('div');
-      placeholder.className = 'msg bot';
-      placeholder.textContent = 'Pensando…';
-      dom.box.appendChild(placeholder);
-      dom.box.scrollTop = dom.box.scrollHeight;
-
-      try {
-        const response = await puter.ai.chat(text, { model: MODEL_NAME });
-        const output = typeof response === 'string'
-          ? response
-          : response?.output || response?.message || response?.text || JSON.stringify(response);
-        placeholder.remove();
-        appendMessage('bot', output);
-      } catch (err) {
-        console.error(err);
-        placeholder.remove();
-        appendMessage('bot', '❌ Error al contactar con Kimi.');
-      } finally {
-        thinking = false;
-      }
-    }
-
-    function handleFile(ev) {
-      const file = ev.target.files[0];
-      if (!file) return
+function appendMessage(role, text) {
+const div = document.createElement('div');
+div.className = 'msg ' + role;
+div.textContent = text;
+chatBox.appendChild(div);
+chatBox.scrollTop = chatBox.scrollHeight;
+}
