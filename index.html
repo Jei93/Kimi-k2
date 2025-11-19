@@ -2,150 +2,424 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<title>Chat Kimi K2 Pro</title>
+<title>Kimi K2 con Memoria Ilimitada</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<!-- Prism.js for syntax highlighting -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
 <style>
 * { box-sizing: border-box; }
-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #f0f2f5; }
-.toolbar { background: #fff; padding: 12px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; border-bottom: 2px solid #e0e0e0; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #0a0e27; color: #e0e0e0; }
+.toolbar { background: #1a1f3a; padding: 12px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; border-bottom: 2px solid #2d3748; position: sticky; top: 0; z-index: 100; }
 .toolbar label { display: flex; align-items: center; gap: 5px; font-size: 0.9em; }
-#chat-box { height: 60vh; overflow-y: auto; padding: 15px; background: #fff; margin: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.msg { margin: 10px 0; display: flex; gap: 10px; }
+#chat-box { height: 60vh; overflow-y: auto; padding: 20px; background: #0f1427; margin: 10px; border-radius: 8px; border: 1px solid #2d3748; }
+.msg { margin: 15px 0; display: flex; gap: 10px; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .user { justify-content: flex-end; }
 .bot { justify-content: flex-start; }
-.bubble { padding: 10px 15px; border-radius: 15px; max-width: 75%; }
+.bubble { padding: 12px 16px; border-radius: 12px; max-width: 85%; word-wrap: break-word; line-height: 1.5; }
 .user .bubble { background: #0057e7; color: #fff; }
-.bot .bubble { background: #e5e7eb; color: #1f2937; }
-.file-info { font-size: 0.8em; color: #666; margin: 5px 0; }
+.bot .bubble { background: #1a1f3a; color: #e0e0e0; border: 1px solid #2d3748; }
+.file-info { font-size: 0.75em; color: #8899a6; margin: 5px 0; text-align: right; }
 #input-area { display: flex; padding: 10px; gap: 10px; }
-#user-input { flex: 1; padding: 12px; font-size: 1em; border: 1px solid #ccc; border-radius: 20px; }
-button { padding: 10px 20px; font-size: 1em; border: none; border-radius: 20px; background: #0057e7; color: #fff; cursor: pointer; }
+#user-input { flex: 1; min-height: 60px; max-height: 300px; padding: 12px; font-size: 1em; border: 1px solid #2d3748; border-radius: 12px; background: #1a1f3a; color: #e0e0e0; resize: vertical; font-family: inherit; }
+button { padding: 12px 24px; font-size: 1em; border: none; border-radius: 12px; background: #0057e7; color: #fff; cursor: pointer; transition: background 0.2s; }
 button:hover { background: #0041b0; }
 #file-input { display: none; }
-.status { font-size: 0.8em; color: #666; margin-left: 10px; }
+.status { font-size: 0.8em; color: #8899a6; margin-left: auto; }
+.code-block { position: relative; margin: 10px 0; }
+.download-btn { position: absolute; top: 5px; right: 5px; background: #0057e7; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75em; }
+.download-btn:hover { background: #0041b0; }
+pre { margin: 0; border-radius: 8px; overflow-x: auto; }
+code { font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9em; }
+.drop-zone { border: 2px dashed #2d3748; border-radius: 8px; padding: 10px; text-align: center; margin: 10px 0; transition: all 0.3s; }
+.drop-zone.dragover { border-color: #0057e7; background: rgba(0, 87, 231, 0.1); }
+#storage-info { font-size: 0.8em; color: #8899a6; }
+.tokens-info { font-size: 0.7em; color: #ffaa00; margin-left: 10px; }
+.context-warning { background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa00; padding: 5px; border-radius: 4px; margin: 5px 0; font-size: 0.8em; }
 </style>
 </head>
 <body>
 
 <div class="toolbar">
 <button onclick="document.getElementById('file-input').click()">📎 Archivo</button>
-<input type="file" id="file-input" onchange="handleFile(this.files[0])" />
-<label><input type="checkbox" id="web-search" /> 🔍 Búsqueda web</label>
-<label><input type="checkbox" id="deep-think" /> 🧠 Razonamiento profundo</label>
-<button onclick="clearHistory()">🗑️ Borrar historial</button>
+<input type="file" id="file-input" onchange="handleFile(this.files[0])" multiple />
+<label><input type="checkbox" id="web-search" /> 🔍 Web</label>
+<label><input type="checkbox" id="deep-think" /> 🧠 Deep</label>
+<button onclick="clearHistory()">🗑️ Limpiar</button>
+<button onclick="exportHistory()">💾 Exportar</button>
+<button onclick="clearContext()">🔄 Nuevo Contexto</button>
 <span class="status" id="status"></span>
+<span class="tokens-info" id="tokens-info"></span>
+<span id="storage-info"></span>
 </div>
 
 <div id="chat-box"></div>
 
 <div id="input-area">
-<input type="text" id="user-input" placeholder="Escribe tu mensaje o usa las funciones avanzadas..." onkeypress="if(event.key==='Enter') sendMessage()" />
+<textarea id="user-input" placeholder="Escribe tu mensaje largo... (Shift+Enter para nueva línea, Enter para enviar)" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
 <button onclick="sendMessage()">Enviar</button>
 </div>
 
-<script src="https://js.puter.com/v2/"></script>
-<script>
-const chatBox = document.getElementById('chat-box');
-const input = document.getElementById('user-input');
-const status = document.getElementById('status');
-let currentFile = null;
+<div class="drop-zone" id="drop-zone">
+<p>🎯 Arrastra archivos aquí (múltiples)</p>
+</div>
 
-function loadHistory() {
-const history = JSON.parse(localStorage.getItem('kimi-pro-history') || '[]');
-history.forEach(msg => appendMessage(msg.role, msg.text, msg.file));
+<!-- Scripts -->
+<script src="https://js.puter.com/v2/"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+
+<script>
+// CONFIGURACIÓN
+const MAX_CONTEXT_MESSAGES = 50; // Número máximo de mensajes en contexto
+const MESSAGE_COMPRESSION_THRESHOLD = 1000; // Comprimir si > 1k chars
+
+// IndexedDB Setup
+const DB_NAME = 'KimiChatDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'conversations';
+let db = null;
+let contextMessages = []; // Mensajes en memoria para el contexto
+
+// Inicializar IndexedDB
+function initDB() {
+return new Promise((resolve, reject) => {
+const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+request.onerror = () => reject(request.error);
+request.onsuccess = () => {
+db = request.result;
+loadAllMessages().then(msgs => {
+contextMessages = msgs.slice(-MAX_CONTEXT_MESSAGES);
+updateUI();
+});
+resolve(db);
+};
+
+request.onupgradeneeded = (event) => {
+const db = event.target.result;
+if (!db.objectStoreNames.contains(STORE_NAME)) {
+const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+store.createIndex('timestamp', 'timestamp', { unique: false });
+}
+};
+});
 }
 
+// Cargar todos los mensajes
+function loadAllMessages() {
+return new Promise((resolve, reject) => {
+const transaction = db.transaction([STORE_NAME], 'readonly');
+const store = transaction.objectStore(STORE_NAME);
+const request = store.getAll();
+
+request.onsuccess = () => {
+const messages = request.result.map(msg => ({
+id: msg.id,
+role: msg.role,
+text: lzString.decompressFromUTF16(msg.text),
+file: msg.file ? JSON.parse(lzString.decompressFromUTF16(msg.file)) : null,
+timestamp: msg.timestamp
+}));
+resolve(messages);
+};
+request.onerror = () => reject(request.error);
+});
+}
+
+// Guardar mensaje
 function saveMessage(role, text, file = null) {
-const history = JSON.parse(localStorage.getItem('kimi-pro-history') || '[]');
-history.push({ role, text, file });
-localStorage.setItem('kimi-pro-history', JSON.stringify(history));
+return new Promise((resolve, reject) => {
+const transaction = db.transaction([STORE_NAME], 'readwrite');
+const store = transaction.objectStore(STORE_NAME);
+
+const compressedText = text.length > MESSAGE_COMPRESSION_THRESHOLD
+? lzString.compressToUTF16(text)
+: text;
+
+const compressedFile = file ? lzString.compressToUTF16(JSON.stringify(file)) : null;
+
+const message = {
+role,
+text: compressedText,
+file: compressedFile,
+timestamp: Date.now()
+};
+
+const request = store.add(message);
+request.onsuccess = () => {
+const savedMsg = {
+id: request.result,
+role,
+text,
+file,
+timestamp: message.timestamp
+};
+contextMessages.push(savedMsg);
+if (contextMessages.length > MAX_CONTEXT_MESSAGES) {
+contextMessages.shift(); // Eliminar el más antiguo
+}
+updateUI();
+resolve();
+};
+request.onerror = () => reject(request.error);
+});
+}
+
+// Limpiar solo el contexto (no la base de datos)
+function clearContext() {
+contextMessages = [];
+appendMessage('bot', '🔄 Contexto reiniciado. La IA no recuerda mensajes anteriores.');
+updateUI();
+}
+
+// Limpiar TODO (base de datos)
+function clearHistory() {
+if (!confirm('¿Borrar TODO el historial y archivos de la base de datos?')) return;
+
+const transaction = db.transaction([STORE_NAME], 'readwrite');
+const store = transaction.objectStore(STORE_NAME);
+const request = store.clear();
+
+request.onsuccess = () => {
+contextMessages = [];
+document.getElementById('chat-box').innerHTML = '';
+updateUI();
+status.textContent = '✅ Base de datos eliminada';
+setTimeout(() => status.textContent = '', 2000);
+};
+}
+
+// Exportar historial
+function exportHistory() {
+loadAllMessages().then(messages => {
+const exportText = messages.map(m =>
+`[${new Date(m.timestamp).toLocaleString()}]\n${m.role.toUpperCase()}${m.file ? ` (📄 ${m.file.name})` : ''}:\n${m.text}\n${'='.repeat(60)}\n`
+).join('\n');
+
+downloadFile(exportText, `kimi_conversacion_${Date.now()}.txt`);
+});
+}
+
+// UI FUNCTIONS
+function updateUI() {
+const chatBox = document.getElementById('chat-box');
+chatBox.innerHTML = '';
+
+// Mostrar advertencia si el contexto es grande
+const totalChars = contextMessages.reduce((sum, msg) => sum + msg.text.length, 0);
+const estimatedTokens = Math.ceil(totalChars / 4);
+
+if (estimatedTokens > 10000) {
+const warning = document.createElement('div');
+warning.className = 'context-warning';
+warning.textContent = `⚠️ Contexto grande: ~${estimatedTokens.toLocaleString()} tokens. Considera limpiarlo.`;
+chatBox.appendChild(warning);
+}
+
+document.getElementById('tokens-info').textContent = `📝 ${contextMessages.length}/${MAX_CONTEXT_MESSAGES} msgs | ~${estimatedTokens.toLocaleString()} tokens`;
+
+contextMessages.forEach(msg => appendMessage(msg.role, msg.text, msg.file));
 }
 
 function appendMessage(role, text, file = null) {
 const msgDiv = document.createElement('div');
 msgDiv.className = 'msg ' + role;
 
-const bubble = document.createElement('div');
-bubble.className = 'bubble';
-bubble.textContent = text;
-
 if (file && role === 'user') {
 const fileInfo = document.createElement('div');
 fileInfo.className = 'file-info';
-fileInfo.textContent = `📄 Archivo: ${file.name} (${file.type})`;
+fileInfo.textContent = `📄 ${file.name} (${(file.size / 1024).toFixed(1)}KB)`;
 msgDiv.appendChild(fileInfo);
 }
 
+const bubble = document.createElement('div');
+bubble.className = 'bubble';
+bubble.innerHTML = renderWithDownloads(text);
+
 msgDiv.appendChild(bubble);
-chatBox.appendChild(msgDiv);
-chatBox.scrollTop = chatBox.scrollHeight;
+document.getElementById('chat-box').appendChild(msgDiv);
+Prism.highlightAllUnder(bubble);
 }
 
-async function handleFile(file) {
-if (!file) return;
-currentFile = file;
-status.textContent = `Archivo listo: ${file.name}`;
-setTimeout(() => status.textContent = '', 3000);
+function renderWithDownloads(text) {
+let html = marked.parse(text);
+const tempDiv = document.createElement('div');
+tempDiv.innerHTML = html;
+
+tempDiv.querySelectorAll('pre').forEach((pre, index) => {
+const code = pre.querySelector('code');
+if (code) {
+const codeText = code.textContent;
+const lang = code.className.match(/language-(\w+)/)?.[1] || 'txt';
+
+const wrapper = document.createElement('div');
+wrapper.className = 'code-block';
+
+const downloadBtn = document.createElement('button');
+downloadBtn.className = 'download-btn';
+downloadBtn.textContent = '⬇️ Descargar';
+downloadBtn.onclick = (e) => {
+e.stopPropagation();
+downloadFile(codeText, `kimi_codigo_${Date.now()}_${index}.${lang}`);
+};
+
+pre.parentNode.insertBefore(wrapper, pre);
+wrapper.appendChild(downloadBtn);
+wrapper.appendChild(pre);
+}
+});
+
+return tempDiv.innerHTML;
 }
 
+function downloadFile(content, filename) {
+const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = filename;
+a.click();
+URL.revokeObjectURL(url);
+document.getElementById('status').textContent = `✅ Descargado: ${filename}`;
+setTimeout(() => document.getElementById('status').textContent = '', 2000);
+}
+
+// Drag & Drop
+const dropZone = document.getElementById('drop-zone');
+let currentFiles = [];
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+dropZone.addEventListener(eventName, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+e.preventDefault();
+e.stopPropagation();
+}
+
+['dragenter', 'dragover'].forEach(eventName => {
+dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+});
+
+dropZone.addEventListener('drop', (e) => {
+const files = Array.from(e.dataTransfer.files);
+handleFiles(files);
+}, false);
+
+function handleFiles(files) {
+currentFiles = files.map(file => ({
+name: file.name,
+size: file.size,
+type: file.type,
+data: null
+}));
+
+files.forEach((file, index) => {
+const reader = new FileReader();
+reader.onload = (e) => {
+currentFiles[index].data = e.target.result;
+};
+reader.readAsDataURL(file);
+});
+
+document.getElementById('status').textContent = `📎 ${files.length} archivos listos`;
+setTimeout(() => document.getElementById('status').textContent = '', 3000);
+}
+
+// ENVÍO DE MENSAJE CON HISTORIAL COMPLETO
 async function sendMessage() {
+const input = document.getElementById('user-input');
 const text = input.value.trim();
-if (!text && !currentFile) return;
+if (!text && currentFiles.length === 0) return;
 
 const useWebSearch = document.getElementById('web-search').checked;
 const deepThink = document.getElementById('deep-think').checked;
 
-appendMessage('user', text, currentFile);
-saveMessage('user', text, currentFile);
+// Añadir mensaje al UI
+appendMessage('user', text, currentFiles.length > 0 ? currentFiles[0] : null);
+saveMessage('user', text, currentFiles.length > 0 ? currentFiles[0] : null);
+
+// Limpiar input
 input.value = '';
 
 try {
-status.textContent = '🤔 Kimi está pensando...';
+document.getElementById('status').textContent = '🤔 Procesando con contexto...';
 
-const options = {
+// Construir el prompt con TODO el historial
+let fullPrompt = '';
+
+// Añadir instrucciones del sistema
+if (useWebSearch) fullPrompt += '[SYSTEM: Enable web search for current information]\n\n';
+if (deepThink) fullPrompt += '[SYSTEM: Use deep reasoning and analysis]\n\n';
+
+// Añadir historial de conversación
+contextMessages.forEach(msg => {
+const role = msg.role === 'user' ? 'Usuario' : 'Asistente';
+fullPrompt += `${role}: ${msg.text}\n\n`;
+});
+
+// Añadir archivo si existe
+if (currentFiles.length > 0) {
+fullPrompt += `[SYSTEM: User has attached ${currentFiles.length} file(s). Analyze them if relevant.]\n\n`;
+}
+
+// Añadir el mensaje actual
+fullPrompt += `Usuario: ${text}\n\nAsistente:`;
+
+// Calcular tokens estimados
+const estimatedTokens = Math.ceil(fullPrompt.length / 4);
+document.getElementById('tokens-info').textContent = `📝 ${contextMessages.length}/${MAX_CONTEXT_MESSAGES} msgs | Contexto: ~${estimatedTokens.toLocaleString()} tokens`;
+
+// Llamada a la API con contexto completo
+let response;
+if (currentFiles.length > 0) {
+// Enviar el primer archivo (Puter.js soporta uno por llamada)
+response = await puter.ai.chat(fullPrompt, {
 model: 'moonshotai/kimi-k2',
 stream: false,
-context: `Web search: ${useWebSearch}, Deep thinking: ${deepThink}`
-};
-
-let response;
-if (currentFile) {
-const reader = new FileReader();
-reader.onload = async (e) => {
-options.file = { name: currentFile.name, content: e.target.result };
-response = await puter.ai.chat(text || 'Analiza este archivo', options);
-handleResponse(response, text);
-};
-reader.readAsText(currentFile);
-return;
+file: currentFiles[0].data,
+filename: currentFiles[0].name
+});
 } else {
-response = await puter.ai.chat(text, options);
-handleResponse(response, text);
-}
-} catch (err) {
-appendMessage('bot', '❌ Error: ' + err.message);
-saveMessage('bot', 'Error');
-status.textContent = '';
-}
+response = await puter.ai.chat(fullPrompt, {
+model: 'moonshotai/kimi-k2',
+stream: false
+});
 }
 
-function handleResponse(response, originalText) {
 appendMessage('bot', response);
 saveMessage('bot', response);
-status.textContent = '';
-currentFile = null;
-}
 
-function clearHistory() {
-if(confirm('¿Borrar todo el historial?')) {
-localStorage.removeItem('kimi-pro-history');
-chatBox.innerHTML = '';
-status.textContent = '✅ Historial borrado';
-setTimeout(() => status.textContent = '', 2000);
+document.getElementById('status').textContent = '';
+currentFiles = [];
+} catch (err) {
+const errorMsg = `❌ Error: ${err.message || 'Token limit exceeded. Consider clearing context.'}`;
+appendMessage('bot', errorMsg);
+saveMessage('bot', errorMsg);
+document.getElementById('status').textContent = '';
 }
 }
 
-window.onload = loadHistory;
+// Inicialización
+initDB().then(() => {
+console.log('✅ Sistema de memoria inicializado');
+}).catch(err => {
+console.error('⚠️ Error:', err);
+document.getElementById('status').textContent = '⚠️ Modo sin persistencia';
+});
 </script>
 </body>
 </html>
