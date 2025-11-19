@@ -101,18 +101,19 @@
       fileInp.value='';
 
       const mode=modeSel.value;
-      let extra={};
-      if(mode==='reasoning')extra.reasoning='enabled';
-      if(mode==='web-search')extra.web_search='enabled';
+      let extra={ model: "moonshotai/kimi-k2" };
+      if(mode==='reasoning') extra.reasoning='enabled';
+      if(mode==='web-search') extra.web_search='enabled';
 
       try{
-        const res=await puter.ai.chat(userCont,{...extra,files});
+        const res=await puter.ai.chat(userCont, extra);
         const output = typeof res === 'string'
           ? res
           : res?.output || res?.message || res?.text || JSON.stringify(res);
         appendRich('bot',output);
         save('bot',output);
       }catch(e){
+        console.error(e);
         appendRich('bot','❌ Error al contactar con Kimi');
         save('bot','❌ Error');
       }
@@ -136,4 +137,3 @@
   </script>
 </body>
 </html>
-
